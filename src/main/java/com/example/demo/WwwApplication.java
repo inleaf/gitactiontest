@@ -15,6 +15,6 @@ public class WwwApplication {
 	
 	@GetMapping("/")
 	public String index() {
-		return "my web page!!!";
+		return "my web page22!!!";
 	}
 }
