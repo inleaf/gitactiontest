@@ -15,6 +15,6 @@ public class WwwApplication {
 	
 	@GetMapping("/")
 	public String index() {
-		return "acGTDDEGAD!@%";
+		return "final!@%";
 	}
 }
