@@ -50,16 +50,16 @@ jobs:
           debug: true
           script: |
             #!/bin/bash
-            set -eo pipefail   # -u 제거, -e 유지
+            set -eo pipefail
 
             APP_DIR=/home/ubuntu/app
             cd "$APP_DIR" || { echo "❌ APP_DIR 없음"; exit 1; }
 
-            echo "▶ 기존 SpringBoot 프로세스 확인"
-            PID=$(pgrep -f 'java -jar' || true)
-            if [[ -n "${PID}" ]]; then
-              echo "▶ 종료 중… PID=$PID"
-              kill "$PID"
+            echo "▶ 실행 중인 SpringBoot 프로세스 확인"
+            PIDS=$(pgrep -f 'java -jar' || true)
+            if [[ -n "${PIDS}" ]]; then
+              echo "▶ 종료 중… PIDs=${PIDS}"
+              echo "${PIDS}" | xargs -r kill        # PID 개수 상관없이 모두 종료
               sleep 5
             else
               echo "▶ 실행 중인 프로세스 없음"
@@ -76,3 +76,4 @@ jobs:
             nohup java -jar "$JAR_PATH" > "$APP_DIR/app.log" 2>&1 &
 
             echo "✅ 배포 완료"
+
