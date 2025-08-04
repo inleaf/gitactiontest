@@ -30,13 +30,13 @@ jobs:
           name: springboot-app
           path: target/*.jar
 
-      # 5) EC2로 JAR 복사 (target/ 유지)
+      # 5) EC2로 JAR 복사
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
-          host: ${{ secrets.AWS_HOST }}      # ex) 13.209.22.255
-          username: ${{ secrets.AWS_USER }}  # ex) ubuntu
-          key: ${{ secrets.AWS_KEY }}        # PEM 내용
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_KEY }}
           source: "target/*.jar"
           target: "/home/ubuntu/app/"
 
@@ -51,8 +51,9 @@ jobs:
           script: |
             #!/bin/bash
             set -e
+
             # ───────────────────────────────────────────────
-            # 0. Java 17 설치 확인(없으면 자동 설치)
+            # 0. Java 17 설치 여부 확인
             # ───────────────────────────────────────────────
             if ! command -v java >/dev/null 2>&1; then
               echo "▶ Java 미설치 → 설치 진행"
@@ -62,12 +63,13 @@ jobs:
               else
                 sudo yum install -y java-17-amazon-corretto-headless
               fi
-              java -version
             fi
+
             APP_DIR=/home/ubuntu/app
             cd "$APP_DIR"
+
             # ───────────────────────────────────────────────
-            # 1. 이전 프로세스 종료 (PID 파일 방식)
+            # 1. 이전 PID 파일 기반 프로세스 종료
             # ───────────────────────────────────────────────
             if [[ -f app.pid ]]; then
               OLD_PID=$(cat app.pid)
@@ -77,6 +79,18 @@ jobs:
                 sleep 5
               fi
             fi
+
+            # ───────────────────────────────────────────────
+            # ⚡ 새로 추가 – 8888 포트 점유 프로세스 모두 종료
+            # ───────────────────────────────────────────────
+            PORT=8888
+            PIDS_ON_PORT=$(sudo lsof -ti tcp:${PORT} || true)
+            if [[ -n "${PIDS_ON_PORT}" ]]; then
+              echo "⚡ 8888 포트를 점유 중인 PID들 종료 → ${PIDS_ON_PORT}"
+              echo "${PIDS_ON_PORT}" | xargs -r sudo kill
+              sleep 5
+            fi
+
             # ───────────────────────────────────────────────
             # 2. 최신 JAR 선택
             # ───────────────────────────────────────────────
@@ -86,6 +100,7 @@ jobs:
               echo "❌ JAR 파일을 찾을 수 없습니다"; exit 1
             fi
             echo "▶ 실행 JAR: $JAR_PATH"
+
             # ───────────────────────────────────────────────
             # 3. 새 프로세스 실행 & PID 저장
             # ───────────────────────────────────────────────
