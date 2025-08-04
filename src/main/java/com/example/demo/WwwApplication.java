@@ -15,6 +15,6 @@ public class WwwApplication {
 	
 	@GetMapping("/")
 	public String index() {
-		return "my web page22!!!";
+		return "lsh test1234!!!";
 	}
 }
