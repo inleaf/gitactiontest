@@ -17,5 +17,4 @@ public class WwwApplication {
 	public String index() {
 		return "my web page!!";
 	}
-	
 }
