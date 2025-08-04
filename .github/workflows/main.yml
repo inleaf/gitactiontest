@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) 소스 가져오기
+      # 1) 소스 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -26,25 +26,24 @@ jobs:
       - name: Build with Maven
         run: mvn -B clean package -DskipTests
 
-      # 4) JAR 아티팩트 업로드(선택)
+      # 4) (선택) JAR 아티팩트 업로드
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: springboot-app
           path: target/*.jar
 
-      # 5) EC2 인스턴스로 JAR 전송 (target/ 디렉터리 제거)
+      # 5) EC2 인스턴스로 JAR 복사 (target/ 유지)
       - name: Copy JAR to EC2 via SCP
         uses: appleboy/scp-action@v0.1.3
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USER }}
-          key: ${{ secrets.AWS_KEY }}        # PEM 키 '내용'을 저장한 시크릿
+          key: ${{ secrets.AWS_KEY }}      # PEM 키 내용
           source: "target/*.jar"
           target: "/home/ubuntu/app/"
-          strip_components: 1               # target/ 한 단계 제거 → app/ 바로 JAR 배치
 
-      # 6) EC2에서 Spring Boot 실행
+      # 6) EC2에서 Spring Boot 실행 (target 디렉터리 진입)
       - name: Run Spring Boot on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -57,19 +56,23 @@ jobs:
 
             APP_DIR=/home/ubuntu/app
             echo "▶ APP_DIR: $APP_DIR"
+            cd "$APP_DIR"
+
+            # target 폴더가 존재하면 진입
+            if [ -d target ]; then
+              cd target
+            fi
 
             echo "▶ 기존 프로세스 종료(있다면)…"
             pkill -f 'java -jar' || true
 
             echo "▶ 최신 JAR 선택"
-            cd "$APP_DIR"
-            JAR_NAME=$(ls -t *.jar | head -n1)
-
-            if [[ -z "$JAR_NAME" ]]; then
+            JAR_NAME=$(ls -t *.jar | head -n1 || true)
+            if [[ -z "${JAR_NAME:-}" ]]; then
               echo "❌ JAR 파일을 찾을 수 없습니다"; exit 1
             fi
 
             echo "▶ 백그라운드 실행: $JAR_NAME"
-            nohup java -jar "$JAR_NAME" > app.log 2>&1 &
+            nohup java -jar "$JAR_NAME" > ../app.log 2>&1 &
 
             echo "✅ $JAR_NAME 배포 완료"
