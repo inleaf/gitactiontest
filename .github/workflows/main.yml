@@ -59,14 +59,17 @@ jobs:
             PIDS=$(pgrep -f 'java -jar' || true)
             if [[ -n "${PIDS}" ]]; then
               echo "▶ 종료 중… PIDs=${PIDS}"
-              echo "${PIDS}" | xargs -r kill        # PID 개수 상관없이 모두 종료
+              for pid in ${PIDS}; do
+                kill "$pid" 2>/dev/null || true   # 개별 PID 오류 무시
+              done
               sleep 5
             else
               echo "▶ 실행 중인 프로세스 없음"
             fi
 
             echo "▶ 최신 JAR 검색"
-            JAR_PATH=$(find . -maxdepth 2 -name "*.jar" -type f -printf "%T@ %p\n" | sort -nr | head -n1 | cut -d' ' -f2-)
+            JAR_PATH=$(find . -maxdepth 2 -name "*.jar" -type f \
+                        -printf "%T@ %p\n" | sort -nr | head -n1 | cut -d' ' -f2-)
             if [[ -z "${JAR_PATH}" ]]; then
               echo "❌ JAR 파일을 찾을 수 없습니다"; exit 1
             fi
@@ -76,4 +79,3 @@ jobs:
             nohup java -jar "$JAR_PATH" > "$APP_DIR/app.log" 2>&1 &
 
             echo "✅ 배포 완료"
-
