@@ -81,7 +81,7 @@ jobs:
             fi
 
             # ───────────────────────────────────────────────
-            # ⚡ 새로 추가 – 8888 포트 점유 프로세스 모두 종료
+            # ⚡ 8888 포트 점유 프로세스 모두 종료
             # ───────────────────────────────────────────────
             PORT=8888
             PIDS_ON_PORT=$(sudo lsof -ti tcp:${PORT} || true)
@@ -89,6 +89,16 @@ jobs:
               echo "⚡ 8888 포트를 점유 중인 PID들 종료 → ${PIDS_ON_PORT}"
               echo "${PIDS_ON_PORT}" | xargs -r sudo kill
               sleep 5
+            fi
+
+            # ───────────────────────────────────────────────
+            # ⚡ UFW에 8888 포트 허용 추가
+            # ───────────────────────────────────────────────
+            if command -v ufw >/dev/null 2>&1; then
+              if sudo ufw status | grep -q inactive; then
+                echo "▶ UFW가 비활성화 상태이므로 규칙만 추가"
+              fi
+              sudo ufw allow 8888/tcp || true
             fi
 
             # ───────────────────────────────────────────────
