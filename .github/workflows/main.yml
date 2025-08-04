@@ -39,17 +39,18 @@ jobs:
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USER }}
-          key: ${{ secrets.AWS_KEY }}      # PEM 키 내용
+          key: ${{ secrets.AWS_KEY }}      # PEM 키 '내용'
           source: "target/*.jar"
           target: "/home/ubuntu/app/"
 
-      # 6) EC2에서 Spring Boot 실행 (target 디렉터리 진입)
+      # 6) EC2에서 Spring Boot 실행
       - name: Run Spring Boot on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USER }}
           key: ${{ secrets.AWS_KEY }}
+          debug: true                     # 표준/에러 출력 모두 보기
           script: |
             #!/bin/bash
             set -euo pipefail
@@ -58,21 +59,18 @@ jobs:
             echo "▶ APP_DIR: $APP_DIR"
             cd "$APP_DIR"
 
-            # target 폴더가 존재하면 진입
-            if [ -d target ]; then
-              cd target
-            fi
-
             echo "▶ 기존 프로세스 종료(있다면)…"
             pkill -f 'java -jar' || true
 
-            echo "▶ 최신 JAR 선택"
-            JAR_NAME=$(ls -t *.jar | head -n1 || true)
-            if [[ -z "${JAR_NAME:-}" ]]; then
+            echo "▶ JAR 검색"
+            # app/ 및 app/target/ 두 곳 모두 탐색, 최신 파일 1개 선택
+            JAR_PATH=$(find . -maxdepth 2 -name "*.jar" -type f -printf "%T@ %p\n" | sort -nr | head -n1 | cut -d' ' -f2-)
+
+            if [[ -z "${JAR_PATH:-}" ]]; then
               echo "❌ JAR 파일을 찾을 수 없습니다"; exit 1
             fi
 
-            echo "▶ 백그라운드 실행: $JAR_NAME"
-            nohup java -jar "$JAR_NAME" > ../app.log 2>&1 &
+            echo "▶ 백그라운드 실행: $JAR_PATH"
+            nohup java -jar "$JAR_PATH" > "$APP_DIR/app.log" 2>&1 &
 
-            echo "✅ $JAR_NAME 배포 완료"
+            echo "✅ 배포 완료: $(basename "$JAR_PATH")"
